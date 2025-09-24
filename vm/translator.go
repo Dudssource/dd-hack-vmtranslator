@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -44,7 +44,7 @@ func Translate(srcPath, outPath *string, dbg *bool) error {
 	}
 
 	var (
-		fileName = strings.Split(path.Base(*srcPath), ".")[0]
+		fileName = strings.Split(filepath.Base(*srcPath), ".")[0]
 		cw       = &codeWriter{
 			w: &strings.Builder{},
 		}
@@ -56,6 +56,32 @@ func Translate(srcPath, outPath *string, dbg *bool) error {
 		scanner   = bufio.NewScanner(file)
 		errorList = make([]error, 0)
 	)
+
+	// tr.cw.write("// init")
+	// tr.cw.write("@256")
+	// tr.cw.write("D=A")
+	// tr.cw.write("@R0")
+	// tr.cw.write("M=D")
+
+	// tr.cw.write("@300")
+	// tr.cw.write("D=A")
+	// tr.cw.write("@R1")
+	// tr.cw.write("M=D")
+
+	// tr.cw.write("@400")
+	// tr.cw.write("D=A")
+	// tr.cw.write("@R2")
+	// tr.cw.write("M=D")
+
+	// tr.cw.write("@3000")
+	// tr.cw.write("D=A")
+	// tr.cw.write("@R3")
+	// tr.cw.write("M=D")
+
+	// tr.cw.write("@3010")
+	// tr.cw.write("D=A")
+	// tr.cw.write("@R4")
+	// tr.cw.write("M=D")
 
 	for lineNo := 1; scanner.Scan(); lineNo++ {
 
@@ -145,6 +171,12 @@ func Translate(srcPath, outPath *string, dbg *bool) error {
 	if len(errorList) > 0 {
 		return errors.Join(errorList...)
 	}
+
+	// end loop
+	// tr.cw.write("// end loop")
+	// tr.cw.write("(END)")
+	// tr.cw.write("@END")
+	// tr.cw.write("0;JMP")
 
 	// convert result to binary
 	binaryOutput := []byte(tr.cw.w.String())

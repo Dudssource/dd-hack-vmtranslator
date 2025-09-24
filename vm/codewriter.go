@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -42,147 +43,109 @@ type codeWriter struct {
 
 func (o *codeWriter) add() {
 	o.write("// add x + y")
-	// Y=D
-	o.pop()
-	o.write("@R14")
-	o.write("M=D")
-	// X=D
-	o.pop()
-	// X+Y
-	o.write("@R14")
-	o.write("D=D+M")
-	// PUSH
-	o.push()
+	o.write("@SP")
+	o.write("AM=M-1") // SP--
+	o.write("D=M")    // Y = RAM[SP]
+	o.write("A=A-1")  // X = RAM[SP-1]
+	o.write("M=D+M")  // RAM[SP-1] = X + Y
 }
 
 func (o *codeWriter) sub() {
 	o.write("// sub x - y")
-	// Y=D
-	o.pop()
-	o.write("@R14")
-	o.write("M=D")
-	// X=D
-	o.pop()
-	// X-Y
-	o.write("@R14")
-	o.write("D=M-D")
-	// PUSH
-	o.push()
+	o.write("@SP")
+	o.write("AM=M-1") // SP--
+	o.write("D=M")    // Y = RAM[SP]
+	o.write("A=A-1")  // X = RAM[SP-1]
+	o.write("M=M-D")  // RAM[SP-1] = X - Y
 }
 
 func (o *codeWriter) neg() {
 	o.write("// neg -y")
-	// Y=D
-	o.pop()
-	// Y=-Y
-	o.write("D=-D")
-	// PUSH
-	o.push()
+	o.write("@SP")
+	o.write("A=M-1") // Y = RAM[SP-1]
+	o.write("M=-M")  // Y = -Y
 }
 
 func (o *codeWriter) eq() {
 	o.write("// eq x==y")
+	o.write("@SP")
+	o.write("AM=M-1") // SP--
+	o.write("D=M")    // Y = RAM[SP]
+	o.write("A=A-1")  // X = RAM[SP-1]
+	o.write("D=M-D")  // D = X-Y
+	o.write("M=0")    // RAM[SP-1] = 0
 	o.eqIdx++
-	// R14=Y
-	o.pop()
-	o.write("@R14")
-	o.write("M=D")
-	// D=X
-	o.pop()
-	// X-Y
-	o.write("@R14")
-	o.write("D=M-D")
-	o.write(fmt.Sprintf("@EQ_%d", o.eqIdx))
-	o.write("D;JEQ")
-	o.write("D=0")
-	o.push()
-	o.write(fmt.Sprintf("(EQ_%d)", o.eqIdx))
-	o.write("D=-1")
-	o.push()
+	o.write(fmt.Sprintf("@NEQ_%d", o.eqIdx))
+	o.write("D;JNE") // if D != 0 goto NEQ_N
+	o.write("@SP")
+	o.write("A=M-1")
+	o.write("M=-1")
+	o.write(fmt.Sprintf("(NEQ_%d)", o.eqIdx))
 }
 
 func (o *codeWriter) gt() {
 	o.write("// gt x > y")
+	o.write("@SP")
+	o.write("AM=M-1") // SP--
+	o.write("D=M")    // Y = RAM[SP]
+	o.write("A=A-1")  // X = RAM[SP-1]
+	o.write("D=M-D")  // D = X-Y
+	o.write("M=0")    // RAM[SP-1] = 0
 	o.gtIdx++
-	// R14=Y
-	o.pop()
-	o.write("@R14")
-	o.write("M=D")
-	// D=X
-	o.pop()
-	// X-Y
-	o.write("@R14")
-	o.write("D=M-D")
-	o.write(fmt.Sprintf("@GT_%d", o.gtIdx))
-	o.write("D;JGT")
-	o.write("D=0")
-	o.push()
-	o.write(fmt.Sprintf("(GT_%d)", o.gtIdx))
-	o.write("D=-1")
-	o.push()
+	o.write(fmt.Sprintf("@NGT_%d", o.gtIdx))
+	o.write("D;JLE") // if D <= 0 goto NGT_N
+	o.write("@SP")
+	o.write("A=M-1")
+	o.write("M=-1")
+	o.write(fmt.Sprintf("(NGT_%d)", o.gtIdx))
 }
 
 func (o *codeWriter) lt() {
 	o.write("// lt x < y")
+	o.write("@SP")
+	o.write("AM=M-1") // SP--
+	o.write("D=M")    // Y = RAM[SP]
+	o.write("A=A-1")  // X = RAM[SP-1]
+	o.write("D=M-D")  // D = X - Y
+	o.write("M=0")    // RAM[SP-1] = 0
 	o.ltIdx++
-	// R14=Y
-	o.pop()
-	o.write("@R14")
-	o.write("M=D")
-	// D=X
-	o.pop()
-	// X-Y
-	o.write("@R14")
-	o.write("D=M-D")
-	o.write(fmt.Sprintf("@LT_%d", o.ltIdx))
-	o.write("D;JLT")
-	o.write("D=0")
-	o.push()
-	o.write(fmt.Sprintf("(LT_%d)", o.ltIdx))
-	o.write("D=-1")
-	o.push()
+	o.write(fmt.Sprintf("@NLT_%d", o.ltIdx))
+	o.write("D;JGE") // if D >= 0 goto NLT_N
+	o.write("@SP")
+	o.write("A=M-1")
+	o.write("M=-1")
+	o.write(fmt.Sprintf("(NLT_%d)", o.ltIdx))
 }
 
 func (o *codeWriter) and() {
 	o.write("// and x & y")
-	// Y=D
-	o.pop()
-	o.write("@R14")
-	o.write("M=D")
-	// X=D
-	o.pop()
-	// X & Y
-	o.write("@R14")
-	o.write("D=D&M")
-	// PUSH
-	o.push()
+	o.write("@SP")
+	o.write("AM=M-1") // SP--
+	o.write("D=M")    // Y = RAM[SP]
+	o.write("A=A-1")  // X = RAM[SP-1]
+	o.write("M=D&M")  // RAM[SP-1] = D & M
 }
 
 func (o *codeWriter) or() {
 	o.write("// or x | y")
-	// Y=D
-	o.pop()
-	o.write("@R14")
-	o.write("M=D")
-	// X=D
-	o.pop()
-	// X | Y
-	o.write("@R14")
-	o.write("D=D|M")
-	// PUSH
-	o.push()
+	o.write("@SP")
+	o.write("AM=M-1") // SP--
+	o.write("D=M")    // Y = RAM[SP]
+	o.write("A=A-1")  // X = RAM[SP-1]
+	o.write("M=D|M")  // RAM[SP-1] = D | M
 }
 
 func (o *codeWriter) not() {
-	o.write("// or x | y")
-	// Y=D (discarded)
-	o.pop()
-	// X=D
-	o.pop()
-	// !X
-	o.write("D=!D")
-	// PUSH
-	o.push()
+	o.write("// not x")
+	o.write("@SP")
+	o.write("AM=M-1") // SP--
+	o.write("A=A-1")  // X = RAM[SP-1]
+	o.write("M=!M")   // RAM[SP-1] = !X
+}
+
+func (*codeWriter) toInt(index string) int {
+	n, _ := strconv.ParseInt(index, 10, 16)
+	return int(n)
 }
 
 func (o *codeWriter) pushLocal(index string) {
@@ -252,13 +215,17 @@ func (o *codeWriter) popStatic(index, fileName string) {
 // pushTemp uses a fixed 8-entry segment, starting from address R5 plus index
 func (o *codeWriter) pushTemp(index string) {
 	o.write("// push temp " + index)
-	o.pushDynamic(TEMP_REG, index)
+	o.write(fmt.Sprintf("@%d", o.toInt(index)+5))
+	o.write("D=M")
+	o.push()
 }
 
 // popTemp uses a fixed 8-entry segment, starting from address R5 (TEMP_REG) plus index
 func (o *codeWriter) popTemp(index string) {
 	o.write("// pop temp " + index)
-	o.popDynamic(TEMP_REG, index)
+	o.pop()
+	o.write(fmt.Sprintf("@%d", o.toInt(index)+5))
+	o.write("M=D")
 }
 
 // popPointer base address of this and that segments
@@ -288,9 +255,10 @@ func (o *codeWriter) popPointer(index string) {
 // pushDynamic used by local,argument,this, that and temp memory segments
 func (o *codeWriter) pushDynamic(segmentPointer, index string) {
 	o.write("@" + segmentPointer)
-	o.write("D=M")
-	o.write("@" + index)
-	o.write("A=D+A")
+	o.write("A=M")
+	for range o.toInt(index) {
+		o.write("A=A+1")
+	}
 	o.write("D=M")
 	o.push()
 }
@@ -299,23 +267,19 @@ func (o *codeWriter) pushDynamic(segmentPointer, index string) {
 // D register should contain the input
 func (o *codeWriter) push() {
 	o.write("@SP")
-	o.write("A=M")
+	o.write("AM=M+1")
+	o.write("A=A-1")
 	o.write("M=D")
-	o.write("@SP")
-	o.write("M=M+1")
 }
 
 // popDynamic used by local,argument,this and that memory segments
 func (o *codeWriter) popDynamic(segmentPointer, index string) {
-	o.write("@" + segmentPointer)
-	o.write("D=M")
-	o.write("@" + index)
-	o.write("D=D+A")
-	o.write("@" + POP_REG)
-	o.write("M=D")
 	o.pop()
-	o.write("@" + POP_REG)
+	o.write("@" + segmentPointer)
 	o.write("A=M")
+	for range o.toInt(index) {
+		o.write("A=A+1")
+	}
 	o.write("M=D")
 }
 
@@ -323,8 +287,7 @@ func (o *codeWriter) popDynamic(segmentPointer, index string) {
 // outputs into D register
 func (o *codeWriter) pop() {
 	o.write("@SP")
-	o.write("M=M-1")
-	o.write("A=M")
+	o.write("AM=M-1")
 	o.write("D=M")
 }
 
