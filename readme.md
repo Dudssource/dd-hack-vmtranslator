@@ -26,7 +26,7 @@ In order to run the translator, the following is required:
 Example:
 
 ```shell
-go run main.go -s vm/testdata/BasicTest.vm -o BasicTest.asm -x
+go run main.go vm/testdata/BasicTest.vm
 ```
 
 Usage:
