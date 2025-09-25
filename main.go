@@ -16,8 +16,8 @@
 package main
 
 import (
-	"flag"
 	"log"
+	"os"
 
 	"github.com/Dudssource/dd-hack-vmtranslator/vm"
 )
@@ -25,19 +25,17 @@ import (
 func main() {
 
 	// parse args
-	flag.Args()
-	src := flag.String("s", "", "HACK VM source file")
-	out := flag.String("o", "", "HACK Assembly output file")
-	flag.Parse()
+	args := os.Args
 
-	// validate src/out
-	if len(*src) == 0 || len(*out) == 0 {
-		flag.Usage()
-		log.Fatalln("Missing required arguments")
+	// validate src
+	if len(args) != 2 {
+		log.Fatalln(`Usage of hackvmtranslator:
+  VMTranslator FileName.vm
+`)
 	}
 
 	// run translator
-	if err := vm.Translate(src, out); err != nil {
+	if err := vm.Translate(args[1]); err != nil {
 		log.Fatalf("Found errors:\n%s\n", err.Error())
 	}
 }

@@ -35,17 +35,18 @@ type Translator struct {
 	cw *codeWriter
 }
 
-func Translate(srcPath, outPath *string) error {
+func Translate(srcPath string) error {
 
 	// open src file
-	file, err := os.Open(*srcPath)
+	file, err := os.Open(srcPath)
 	if err != nil {
-		return fmt.Errorf("open %s : %w", *srcPath, err)
+		return fmt.Errorf("open %s : %w", srcPath, err)
 	}
 
 	var (
-		fileName = strings.Split(filepath.Base(*srcPath), ".")[0]
-		dirName  = filepath.Dir(*srcPath)
+		fileName = strings.Split(filepath.Base(srcPath), ".")[0]
+		dirName  = filepath.Dir(srcPath)
+		dstPath  = filepath.Join(dirName, fileName+".asm")
 		cw       = &codeWriter{
 			w: &strings.Builder{},
 		}
@@ -156,7 +157,6 @@ func Translate(srcPath, outPath *string) error {
 	}
 
 	// write output (need to remove extra EOL at the end of output)
-	dstPath := filepath.Join(dirName, *outPath)
 	if err := os.WriteFile(dstPath, binaryOutput[:len(binaryOutput)-1], 0766); err != nil {
 		return fmt.Errorf("hackvmtranslator : write output : %s : %w", dstPath, err)
 	}
