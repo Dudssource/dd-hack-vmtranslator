@@ -33,11 +33,11 @@ Usage:
 
 ```plaintext
 Usage of hackvmtranslator:
-  -s string
-        HACK VM source file
-  -o string
-        HACK Assembly output file
+
+  main vm\testdata\FileName.vm
 ```
+
+The program will generate an HACK Assembly file on the path `vm\testdata\FileName.asm`.
 
 ## Screenshot
 
