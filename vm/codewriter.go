@@ -23,13 +23,11 @@ import (
 
 const (
 	// EOL character
-	EOL    = '\n'
-	INDENT = "    "
+	EOL = '\n'
 )
 
 // offsets for memory segments
 const (
-	SP   = "SP"
 	LCL  = "LCL"
 	ARG  = "ARG"
 	THIS = "THIS"
@@ -37,11 +35,10 @@ const (
 )
 
 type codeWriter struct {
-	w         *strings.Builder
-	errorList []error
-	eqIdx     int
-	gtIdx     int
-	ltIdx     int
+	w     *strings.Builder
+	eqIdx int
+	gtIdx int
+	ltIdx int
 }
 
 func (o *codeWriter) add() {

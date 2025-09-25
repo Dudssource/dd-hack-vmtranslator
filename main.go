@@ -26,8 +26,8 @@ func main() {
 
 	// parse args
 	flag.Args()
-	src := flag.String("s", "", "HACK VM translator source file")
-	out := flag.String("o", "", "HACK VM translator output file")
+	src := flag.String("s", "", "HACK VM source file")
+	out := flag.String("o", "", "HACK Assembly output file")
 	flag.Parse()
 
 	// validate src/out

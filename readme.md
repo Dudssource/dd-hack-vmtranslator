@@ -36,7 +36,7 @@ Usage of hackvmtranslator:
   -s string
         HACK VM source file
   -o string
-        HACK assembly output file
+        HACK Assembly output file
 ```
 
 ## Screenshot
