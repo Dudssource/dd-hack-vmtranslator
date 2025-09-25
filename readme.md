@@ -37,7 +37,7 @@ Usage of hackvmtranslator:
   main vm\testdata\FileName.vm
 ```
 
-The program will generate an HACK Assembly file on the path `vm\testdata\FileName.asm`.
+The program will generate a HACK Assembly file on the path `vm\testdata\FileName.asm`.
 
 ## Screenshot
 
