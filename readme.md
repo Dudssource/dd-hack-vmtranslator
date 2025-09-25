@@ -1,4 +1,4 @@
-# HACK Assembler (Golang)
+# HACK VM Translator (Golang)
 
 Simple (zero dependency) implementation of the VM Translator for the HACK Assembly language, as part of the course [Nand to Tetris](https://www.nand2tetris.org/), written in Golang.
 
@@ -19,7 +19,7 @@ Simple (zero dependency) implementation of the VM Translator for the HACK Assemb
 
 The `vm/testdata` folder includes a few examples of valid HACK VM files.
 
-In order to run the assembler, the following is required:
+In order to run the translator, the following is required:
 
 * Golang >= v1.25.0
 
