@@ -1,3 +1,18 @@
+// This file is part of DD HACK VM Translator.
+// Copyright (C) 2025-2025 Eduardo <dudssource@gmail.com>
+//
+// HACK VM Translator is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// HACK VM Translator is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with HACK VM Translator.  If not, see <http://www.gnu.org/licenses/>.
 package vm
 
 import (
@@ -12,11 +27,6 @@ const (
 	INDENT = "    "
 )
 
-const (
-	TRUE  uint16 = 0xFFFF
-	FALSE uint16 = 0x0
-)
-
 // offsets for memory segments
 const (
 	SP   = "SP"
@@ -24,13 +34,6 @@ const (
 	ARG  = "ARG"
 	THIS = "THIS"
 	THAT = "THAT"
-)
-
-const (
-	// base address for temp memory segment
-	TEMP_REG = "R5"
-	// used to help with pop
-	POP_REG = "R13"
 )
 
 type codeWriter struct {
@@ -136,11 +139,10 @@ func (o *codeWriter) or() {
 }
 
 func (o *codeWriter) not() {
-	o.write("// not x")
+	o.write("// not y")
 	o.write("@SP")
-	o.write("AM=M-1") // SP--
-	o.write("A=A-1")  // X = RAM[SP-1]
-	o.write("M=!M")   // RAM[SP-1] = !X
+	o.write("A=M-1") // SP--
+	o.write("M=!M")  // RAM[SP-1] = !M
 }
 
 func (*codeWriter) toInt(index string) int {
@@ -220,7 +222,7 @@ func (o *codeWriter) pushTemp(index string) {
 	o.push()
 }
 
-// popTemp uses a fixed 8-entry segment, starting from address R5 (TEMP_REG) plus index
+// popTemp uses a fixed 8-entry segment, starting from address R5 plus index
 func (o *codeWriter) popTemp(index string) {
 	o.write("// pop temp " + index)
 	o.pop()
@@ -232,24 +234,24 @@ func (o *codeWriter) popTemp(index string) {
 func (o *codeWriter) pushPointer(index string) {
 	o.write("// push pointer " + index)
 	if index == "0" {
-		o.pushThis("0")
-	} else if index == "1" {
-		o.pushThat("0")
+		o.write("@" + THIS)
 	} else {
-		o.errorList = append(o.errorList, fmt.Errorf("invalid push pointer index %s : should be 0 or 1", index))
+		o.write("@" + THAT)
 	}
+	o.write("D=M")
+	o.push()
 }
 
 // popPointer base address of this and that segments
 func (o *codeWriter) popPointer(index string) {
 	o.write("// pop pointer " + index)
+	o.pop()
 	if index == "0" {
-		o.popThis("0")
-	} else if index == "1" {
-		o.popThat("0")
+		o.write("@" + THIS)
 	} else {
-		o.errorList = append(o.errorList, fmt.Errorf("invalid pop pointer index %s : should be 0 or 1", index))
+		o.write("@" + THAT)
 	}
+	o.write("M=D")
 }
 
 // pushDynamic used by local,argument,this, that and temp memory segments
