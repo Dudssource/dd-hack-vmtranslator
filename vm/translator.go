@@ -45,6 +45,7 @@ func Translate(srcPath, outPath *string) error {
 
 	var (
 		fileName = strings.Split(filepath.Base(*srcPath), ".")[0]
+		dirName  = filepath.Dir(*srcPath)
 		cw       = &codeWriter{
 			w: &strings.Builder{},
 		}
@@ -155,12 +156,13 @@ func Translate(srcPath, outPath *string) error {
 	}
 
 	// write output (need to remove extra EOL at the end of output)
-	if err := os.WriteFile(*outPath, binaryOutput[:len(binaryOutput)-1], 0766); err != nil {
-		return fmt.Errorf("hackvmtranslator : write output : %s : %w", *outPath, err)
+	dstPath := filepath.Join(dirName, *outPath)
+	if err := os.WriteFile(dstPath, binaryOutput[:len(binaryOutput)-1], 0766); err != nil {
+		return fmt.Errorf("hackvmtranslator : write output : %s : %w", dstPath, err)
 	}
 
 	// ok
-	log.Printf("HACK VM Translator finished successfully, output to %s\n", *outPath)
+	log.Printf("HACK VM Translator finished successfully, output to %s\n", dstPath)
 
 	// no errors
 	return nil
