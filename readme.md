@@ -1,6 +1,6 @@
 # HACK VM Translator (Golang)
 
-Simple (zero dependency) implementation of the VM Translator for the HACK Assembly language, as part of the course [Nand to Tetris](https://www.nand2tetris.org/), written in Golang.
+Simple (zero dependency), fully working implementation of the VM Translator for the HACK Assembly language, as part of the course [Nand to Tetris](https://www.nand2tetris.org/), written in Golang.
 
 ## VM Language
  
@@ -23,10 +23,16 @@ In order to run the translator, the following is required:
 
 * Golang >= v1.25.0
 
-Example:
+Example for single VM files:
 
 ```shell
 go run main.go vm/testdata/BasicTest.vm
+```
+
+Example for multi VM file folder (must have a `function Sys.init` defined):
+
+```shell
+go run main.go vm/testdata/FibonacciElement/
 ```
 
 Usage:
@@ -37,7 +43,7 @@ Usage of hackvmtranslator:
   main vm\testdata\FileName.vm
 ```
 
-The program will generate a HACK Assembly file on the path `vm\testdata\FileName.asm`.
+The program will generate a HACK Assembly file on the path `vm\testdata\FileName.asm` or `vm\testdata\FibonacciElement\FibonacciElement.asm` in case of a folder.
 
 ## Screenshot
 

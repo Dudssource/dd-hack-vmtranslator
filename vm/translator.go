@@ -37,27 +37,97 @@ type Translator struct {
 
 func Translate(srcPath string) error {
 
-	// open src file
-	file, err := os.Open(srcPath)
+	// clean up src path
+	srcPath = strings.TrimRight(srcPath, string(os.PathSeparator))
+
+	srcInfo, err := os.Stat(srcPath)
 	if err != nil {
-		return fmt.Errorf("open %s : %w", srcPath, err)
+		return fmt.Errorf("stat %s : %w", srcPath, err)
 	}
 
 	var (
-		fileName = strings.Split(filepath.Base(srcPath), ".")[0]
-		dirName  = filepath.Dir(srcPath)
-		dstPath  = filepath.Join(dirName, fileName+".asm")
-		cw       = &codeWriter{
-			w: &strings.Builder{},
-		}
-
-		tr = &Translator{
-			cw: cw,
-		}
-
-		scanner   = bufio.NewScanner(file)
-		errorList = make([]error, 0)
+		errorList      = make([]error, 0)
+		outputfileName string
+		cw             = &codeWriter{w: &strings.Builder{}, functionReturnMap: make(map[string]int)}
+		tr             = &Translator{cw: cw}
 	)
+
+	if srcInfo.IsDir() {
+
+		// directory name
+		outputfileName = filepath.Base(srcPath)
+
+		// add bootstrap instructions, only required for multi-file input
+		cw.bootstrap()
+
+		// all matching vm files within directory
+		matches, err := filepath.Glob(fmt.Sprintf("%s/*.vm", strings.TrimRight(srcPath, string(os.PathSeparator))))
+		if err != nil {
+			return err
+		}
+
+		// add path
+		srcPath += "/"
+
+		// translate all files
+		for _, vmFile := range matches {
+			translateVMFile(vmFile, tr, &errorList)
+		}
+
+	} else {
+
+		// file name (without extension)
+		outputfileName = strings.Split(filepath.Base(srcPath), ".")[0]
+
+		// translate single file
+		translateVMFile(srcPath, tr, &errorList)
+	}
+
+	if len(errorList) > 0 {
+		return errors.Join(errorList...)
+	}
+
+	var (
+		// target path
+		dstPath = filepath.Join(filepath.Dir(srcPath), outputfileName+".asm")
+
+		// convert result to binary
+		binaryOutput = []byte(tr.cw.w.String())
+	)
+
+	// sanity check
+	if len(binaryOutput) == 0 {
+		return errors.New("HACK VM Translator found no instructions found to be processed")
+	}
+
+	// write output (need to remove extra EOL at the end of output)
+	if err := os.WriteFile(dstPath, binaryOutput[:len(binaryOutput)-1], 0766); err != nil {
+		return fmt.Errorf("hackvmtranslator : write output : %s : %w", dstPath, err)
+	}
+
+	// ok
+	log.Printf("HACK VM Translator finished successfully, output to %s\n", dstPath)
+
+	// no errors
+	return nil
+}
+
+func translateVMFile(srcPath string, tr *Translator, errorList *[]error) {
+
+	// open src file
+	file, err := os.Open(srcPath)
+	if err != nil {
+		*errorList = append(*errorList, err)
+		return
+	}
+
+	var (
+		fileName = strings.ReplaceAll(filepath.Base(srcPath), ".vm", "")
+		scanner  = bufio.NewScanner(file)
+	)
+
+	// set current file
+	tr.cw.fileName = fileName
 
 	for lineNo := 1; scanner.Scan(); lineNo++ {
 
@@ -89,7 +159,7 @@ func Translate(srcPath string) error {
 		case "push":
 
 			if len(parts) < 3 {
-				errorList = append(errorList, fmt.Errorf("%d : invalid push %s", lineNo, line))
+				*errorList = append(*errorList, fmt.Errorf("%d : invalid push %s", lineNo, line))
 				continue
 			}
 
@@ -112,13 +182,13 @@ func Translate(srcPath string) error {
 			case "pointer":
 				tr.cw.pushPointer(index)
 			case "static":
-				tr.cw.pushStatic(index, fileName)
+				tr.cw.pushStatic(index)
 			}
 
 		case "pop":
 
 			if len(parts) < 3 {
-				errorList = append(errorList, fmt.Errorf("%d : invalid pop %s", lineNo, line))
+				*errorList = append(*errorList, fmt.Errorf("%d : invalid pop %s", lineNo, line))
 				continue
 			}
 
@@ -139,31 +209,50 @@ func Translate(srcPath string) error {
 			case "pointer":
 				tr.cw.popPointer(index)
 			case "static":
-				tr.cw.popStatic(index, fileName)
+				tr.cw.popStatic(index)
 			}
+
+		case "label":
+			if len(parts) < 2 {
+				*errorList = append(*errorList, fmt.Errorf("%d : invalid label %s", lineNo, line))
+				continue
+			}
+			tr.cw.label(parts[1])
+
+		case "goto":
+			if len(parts) < 2 {
+				*errorList = append(*errorList, fmt.Errorf("%d : invalid goto %s", lineNo, line))
+				continue
+			}
+			tr.cw.goTo(parts[1])
+
+		case "if-goto":
+			if len(parts) < 2 {
+				*errorList = append(*errorList, fmt.Errorf("%d : invalid if-goto %s", lineNo, line))
+				continue
+			}
+			tr.cw.ifGoTo(parts[1])
+
+		case "function":
+			if len(parts) < 3 {
+				*errorList = append(*errorList, fmt.Errorf("%d : invalid function %s", lineNo, line))
+				continue
+			}
+			tr.cw.function(parts[1], parts[2])
+
+		case "call":
+			if len(parts) < 3 {
+				*errorList = append(*errorList, fmt.Errorf("%d : invalid call %s", lineNo, line))
+				continue
+			}
+			tr.cw.call(parts[1], parts[2])
+
+		case "return":
+			if len(parts) != 1 {
+				*errorList = append(*errorList, fmt.Errorf("%d : invalid function %s", lineNo, line))
+				continue
+			}
+			tr.cw.returns()
 		}
 	}
-
-	if len(errorList) > 0 {
-		return errors.Join(errorList...)
-	}
-
-	// convert result to binary
-	binaryOutput := []byte(tr.cw.w.String())
-
-	// sanity check
-	if len(binaryOutput) == 0 {
-		return errors.New("HACK VM Translator found no instructions found to be processed")
-	}
-
-	// write output (need to remove extra EOL at the end of output)
-	if err := os.WriteFile(dstPath, binaryOutput[:len(binaryOutput)-1], 0766); err != nil {
-		return fmt.Errorf("hackvmtranslator : write output : %s : %w", dstPath, err)
-	}
-
-	// ok
-	log.Printf("HACK VM Translator finished successfully, output to %s\n", dstPath)
-
-	// no errors
-	return nil
 }

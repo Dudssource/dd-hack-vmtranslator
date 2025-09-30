@@ -34,11 +34,151 @@ const (
 	THAT = "THAT"
 )
 
+const (
+	SYS_INIT_LABEL = "Sys.init"
+)
+
 type codeWriter struct {
-	w     *strings.Builder
-	eqIdx int
-	gtIdx int
-	ltIdx int
+	w                 *strings.Builder
+	eqIdx             int
+	gtIdx             int
+	ltIdx             int
+	fileName          string // current file name (without extension)
+	functionReturnMap map[string]int
+}
+
+func (o *codeWriter) bootstrap() {
+	o.write("@256")
+	o.write("D=A")
+	o.write("@SP")
+	o.write("M=D")
+	// call
+	o.call(SYS_INIT_LABEL, "0")
+}
+
+func (o *codeWriter) label(name string) {
+	o.write("(" + name + ")")
+}
+
+func (o *codeWriter) goTo(name string) {
+	o.write("@" + name)
+	o.write("0;JMP") // goto
+}
+
+func (o *codeWriter) ifGoTo(name string) {
+	o.pop()
+	o.write("@" + name)
+	o.write("D;JNE") // if D != 0 goto
+}
+
+func (o *codeWriter) call(name, nArgs string) {
+
+	// return address
+	o.functionReturnMap[name]++
+	label := fmt.Sprintf("%s$ret.%d", name, o.functionReturnMap[name])
+	o.write("@" + label)
+	o.write("D=A")
+	o.push()
+
+	// memory segments
+	o.write("@" + LCL)
+	o.write("D=M")
+	o.push()
+	o.write("@" + ARG)
+	o.write("D=M")
+	o.push()
+	o.write("@" + THIS)
+	o.write("D=M")
+	o.push()
+	o.write("@" + THAT)
+	o.write("D=M")
+	o.push()
+
+	// reposition args
+	o.write("@SP")
+	o.write("D=M-1")
+	for idx := o.toInt(nArgs) + 4; idx > 0; idx-- {
+		o.write("D=D-1")
+	}
+	o.write("@" + ARG)
+	o.write("M=D")
+
+	// reposition LCL
+	o.write("@SP")
+	o.write("D=M")
+	o.write("@" + LCL)
+	o.write("M=D")
+
+	// goto Foo.mult
+	o.goTo(name)
+
+	// write goto ret
+	o.write("(" + label + ")")
+}
+
+func (o *codeWriter) function(name, nArgs string) {
+	// (Foo.bar)
+	o.write("(" + name + ")")
+
+	// number of args
+	val := o.toInt(nArgs) - 1
+
+	// initialize local variables
+	for idx := val; idx >= 0; idx-- {
+		o.write("D=0")
+		o.push()
+	}
+}
+
+func (o *codeWriter) returns() {
+	// end frame (LCL)
+	o.write("@" + LCL)
+	o.write("D=M")
+	o.write("@R13") // end frame
+	o.write("M=D")
+	o.write("@5")
+	o.write("A=D-A")
+	o.write("D=M")
+	o.write("@R14") // ret addr
+	o.write("M=D")
+
+	o.pop()
+	o.write("@" + ARG)
+	o.write("A=M")
+	o.write("M=D")
+
+	o.write("@" + ARG)
+	o.write("D=M+1")
+	o.write("@SP")
+	o.write("M=D")
+
+	o.write("@R13")
+	o.write("AM=M-1")
+	o.write("D=M")
+	o.write("@" + THAT)
+	o.write("M=D")
+
+	o.write("@R13")
+	o.write("AM=M-1")
+	o.write("D=M")
+	o.write("@" + THIS)
+	o.write("M=D")
+
+	o.write("@R13")
+	o.write("AM=M-1")
+	o.write("D=M")
+	o.write("@" + ARG)
+	o.write("M=D")
+
+	o.write("@R13")
+	o.write("AM=M-1")
+	o.write("D=M")
+	o.write("@" + LCL)
+	o.write("M=D")
+
+	o.write("@R14")
+	o.write("A=M")
+	o.write("0;JMP")
 }
 
 func (o *codeWriter) add() {
@@ -196,18 +336,18 @@ func (o *codeWriter) pushConstant(value string) {
 }
 
 // pushStatic index is turned into a variable with format fileName.i
-func (o *codeWriter) pushStatic(index, fileName string) {
+func (o *codeWriter) pushStatic(index string) {
 	o.write("// push static " + index)
-	o.write("@" + fileName + "." + index)
+	o.write("@" + o.fileName + "." + index)
 	o.write("D=M")
 	o.push()
 }
 
 // popStatic index is turned into a variable with format fileName.i
-func (o *codeWriter) popStatic(index, fileName string) {
+func (o *codeWriter) popStatic(index string) {
 	o.write("// pop static " + index)
 	o.pop()
-	o.write("@" + fileName + "." + index)
+	o.write("@" + o.fileName + "." + index)
 	o.write("M=D")
 }
 

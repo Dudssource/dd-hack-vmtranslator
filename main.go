@@ -30,7 +30,8 @@ func main() {
 	// validate src
 	if len(args) != 2 {
 		log.Fatalln(`Usage of hackvmtranslator:
-  VMTranslator FileName.vm
+  VMTranslator myProg/FileName.vm
+  VMTranslator myProg/
 `)
 	}
 
